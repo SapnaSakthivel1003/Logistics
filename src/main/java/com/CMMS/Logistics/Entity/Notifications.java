@@ -1,6 +1,8 @@
 package com.CMMS.Logistics.Entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -10,18 +12,42 @@ import java.time.LocalDateTime;
 @Data
 public class Notifications {
     @Id
-    private long id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    private RecipientRole recipient_role;
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recipient_role", nullable = false)
+    private RecipientRole recipientRole;
+
+    @NotNull
     @Lob
-    @Column(columnDefinition = "text")
+    @Column(name = "message", nullable = false, columnDefinition = "text")
     private String message;
-    private NotificationType notification_type;
-    private boolean is_read;
-    @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private LocalDateTime created_at;
-    private Long created_By;
-    private LocalDateTime last_modified_at;
-    private Long last_modified_by;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "notification_type", nullable = false)
+    private NotificationType notificationType;
+
+    @Column(name = "is_read", nullable = false)
+    private boolean isRead = false;
+
+    // Audit Fields
+    @NotNull
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @NotNull
+    @Column(name = "created_by", nullable = false, updatable = false)
+    private Long createdBy;
+
+    @NotNull
+    @Column(name = "last_modified_at", nullable = false)
+    private LocalDateTime lastModifiedAt;
+
+    @NotNull
+    @Column(name = "last_modified_by", nullable = false)
+    private Long lastModifiedBy;
 
 }
