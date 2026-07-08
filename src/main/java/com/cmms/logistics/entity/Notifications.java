@@ -22,7 +22,6 @@ public class Notifications {
     private RecipientRole recipientRole;
 
     @NotNull
-    @Lob
     @Column(columnDefinition = "text")
     private String message;
 
