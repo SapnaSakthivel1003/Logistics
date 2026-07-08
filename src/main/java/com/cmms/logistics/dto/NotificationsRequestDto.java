@@ -4,6 +4,8 @@ import com.cmms.logistics.entity.NotificationType;
 import com.cmms.logistics.entity.RecipientRole;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 
 @Data
 public class NotificationsRequestDto {
@@ -11,4 +13,8 @@ public class NotificationsRequestDto {
     private String message;
     private NotificationType notificationType;
     private boolean isRead;
+    private LocalDateTime createdAt;
+    private Long createdBy;
+    private LocalDateTime lastModifiedAt;
+    private Long lastModifiedBy;
 }
