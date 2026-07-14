@@ -2,6 +2,7 @@ package com.cmms.logistics.controller;
 
 import com.cmms.logistics.dto.NotificationsRequestDto;
 import com.cmms.logistics.dto.NotificationsResponseDto;
+import com.cmms.logistics.exception_handler.ApiResponse;
 import com.cmms.logistics.service.NotificationsService;
 import com.cmms.logistics.user_context.RequireRole;
 import jakarta.validation.Valid;
@@ -9,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -19,38 +19,64 @@ public class NotificationController {
     private final NotificationsService notificationsService;
     @PostMapping
     @RequireRole("ROLE_ADMIN")
-    public ResponseEntity<NotificationsResponseDto> createVehicleDelivery(@RequestBody(required = true) NotificationsRequestDto requestDto) {
+    public ResponseEntity<ApiResponse<NotificationsResponseDto>> createVehicleDelivery(@RequestBody(required = true) NotificationsRequestDto requestDto) {
         NotificationsResponseDto savedNotifications = notificationsService.saveNotifications(requestDto);
-        return new ResponseEntity<>(savedNotifications, HttpStatus.CREATED);
+        ApiResponse<NotificationsResponseDto> response = ApiResponse.success(
+                HttpStatus.CREATED.value(),
+                "Notification created successfully.",
+                savedNotifications
+        );
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
     @RequireRole("ROLE_ADMIN")
-    public ResponseEntity<NotificationsResponseDto> getNotificationsById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<NotificationsResponseDto>> getNotificationsById(@PathVariable Long id) {
         NotificationsResponseDto notifications = notificationsService.getById(id);
-        return ResponseEntity.ok(notifications);
+        ApiResponse<NotificationsResponseDto> response = ApiResponse.success(
+                HttpStatus.OK.value(),
+                "Notification retrieved successfully.",
+                notifications
+        );
+        return ResponseEntity.ok(response);
     }
 
 
     @GetMapping
     @RequireRole("ROLE_ADMIN")
-    public ResponseEntity<List<NotificationsResponseDto>> getAllNotifications() {
-        return ResponseEntity.ok(notificationsService.getAll());
+    public ResponseEntity<ApiResponse<List<NotificationsResponseDto>>> getAllNotifications() {
+        List<NotificationsResponseDto> customer = notificationsService.getAll();
+        ApiResponse<List<NotificationsResponseDto>> response = ApiResponse.success(
+                HttpStatus.OK.value(),
+                "All Notification retrieved successfully.",
+                customer
+        );
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")
     @RequireRole("ROLE_ADMIN")
-    public ResponseEntity<NotificationsResponseDto> updateNotifications(
+    public ResponseEntity<ApiResponse<NotificationsResponseDto>> updateNotifications(
             @PathVariable Long id,
             @Valid @RequestBody NotificationsRequestDto requestDto) {
         NotificationsResponseDto updatedNotifications= notificationsService.updateNotifications(id, requestDto);
-        return ResponseEntity.ok(updatedNotifications);
+        ApiResponse<NotificationsResponseDto> response = ApiResponse.success(
+                HttpStatus.OK.value(),
+                "Notification updated successfully.",
+                updatedNotifications
+        );
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     @RequireRole("ROLE_ADMIN")
-    public ResponseEntity<Void> deleteNotifications(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteNotifications(@PathVariable Long id) {
         notificationsService.deleteById(id);
-        return ResponseEntity.noContent().build();
+        ApiResponse<Void> response = ApiResponse.success(
+                HttpStatus.OK.value(),
+                "Notification deleted successfully.",
+                null
+        );
+        return ResponseEntity.ok(response);
     }
 }

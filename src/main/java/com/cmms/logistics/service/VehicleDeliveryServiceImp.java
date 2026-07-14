@@ -4,6 +4,7 @@ import com.cmms.logistics.dto.*;
 import com.cmms.logistics.entity.NotificationType;
 import com.cmms.logistics.entity.RecipientRole;
 import com.cmms.logistics.entity.VehicleDelivery;
+import com.cmms.logistics.exception_handler.ApiResponse;
 import com.cmms.logistics.feignclients.*;
 import com.cmms.logistics.repository.VehicleDeliveryRepository;
 import com.cmms.logistics.user_context.UserContext;
@@ -12,6 +13,7 @@ import com.cmms.logistics.utils.VehicleDeliveryMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 import java.net.InetAddress;
@@ -42,24 +44,26 @@ public class VehicleDeliveryServiceImp implements VehicleDeliveryService{
         if (requestDto == null ||requestDto.getDeliveredBy() == null|| requestDto.getVehicleId() == null || requestDto.getCustomerId()==null) {
             throw new IllegalArgumentException("ID's must not be null in the request data.");
         }
-        VehicleInventoryResponseDto vehicleInventoryResponseDto= vehicleInventoryClients.getQualityVehicleInventory(requestDto.getVehicleId()).getBody();
-        Boolean employeeExists = employeeClients.existsEmployeeById(requestDto.getDeliveredBy());
-        Boolean customerExists = customerClients.existsCustomerById(requestDto.getCustomerId());
-        Boolean vehicleExists = vehicleInventoryClients.existsVehicleInventoryById(requestDto.getVehicleId());
-        assert vehicleInventoryResponseDto != null;
+        VehicleInventoryResponseDto vehicleInventoryResponseDto= vehicleInventoryClients.getQualityVehicleInventory(requestDto.getVehicleId()).getBody().getData();
+        if (vehicleInventoryResponseDto == null) {
+            throw new RuntimeException("VehicleInventory data is missing");
+        }
         if (!"INSPECTED".equals(vehicleInventoryResponseDto.getStatus())) {
             throw new IllegalStateException("Vehicle must be in INSPECTED status to be delivered.");
         }
-        if (Boolean.FALSE.equals(employeeExists)) {
-            throw new IllegalArgumentException("Employee ID " + requestDto.getDeliveredBy() + " does not exist in master data.");
+        EmployeeResponseDto employeeResponseDto= employeeClients.getEmployeeById(requestDto.getDeliveredBy()).getBody().getData();
+        if (employeeResponseDto == null) {
+            throw new RuntimeException("Employee data is missing");
         }
-        if (Boolean.FALSE.equals(customerExists)) {
-            throw new IllegalArgumentException("Customer ID " + requestDto.getCustomerId() + " does not exist in master data.");
-        }
-        if (Boolean.FALSE.equals(vehicleExists)) {
-            throw new IllegalArgumentException("vehicle ID " + requestDto.getVehicleId() + " does not exist in master data.");
-        }
+        ResponseEntity<ApiResponse<Boolean>> response = customerClients.getCustomerById(requestDto.getCustomerId());
 
+        if (response.getBody() != null && response.getBody().getData() != null) {
+            boolean customerExists = response.getBody().getData();
+
+            if (!customerExists) {
+                throw new RuntimeException("Customer does not exist or has been deleted.");
+            }
+        }
         UserContext context = UserContextHolder.getContext();
         Long userId = (context != null && context.getUserId() != null) ? context.getUserId() : 0L;
         VehicleDelivery vehicleDelivery = mapper.mapToEntity(requestDto);
@@ -79,10 +83,10 @@ public class VehicleDeliveryServiceImp implements VehicleDeliveryService{
         }
         try {
             vehicleInventoryClients.updateVehicleStatus(requestDto.getVehicleId(), "DELIVERED");
-            log.info("Successfully updated vehicle status to DELIVERED in Production Service.");
-        } catch (Exception e) {
-            log.error("Failed to update vehicle status in Production service over Feign: {}", e.getMessage());
-            throw new RuntimeException("Delivery failed due to dependency status update error.");
+            log.info("Successfully updated vehicle status internally.");
+        } catch (feign.FeignException e) {
+            log.error("Internal service update failed with status [{}]. Response: {}", e.status(), e.contentUTF8());
+            throw new RuntimeException("Failed to update status internally: " + e.contentUTF8());
         }
 
         log.info(">>> [LOGISTICS] Saving notifications to Database...");
@@ -102,17 +106,22 @@ public class VehicleDeliveryServiceImp implements VehicleDeliveryService{
         VehicleDelivery existingVehicleDelivery = vehicleDeliveryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("VehicleInventory not found with ID: " + id));
 
-        Boolean employeeExists = employeeClients.existsEmployeeById(requestDto.getDeliveredBy());
-        Boolean customerExists = customerClients.existsCustomerById(requestDto.getCustomerId());
-        Boolean vehicleExists = vehicleInventoryClients.existsVehicleInventoryById(requestDto.getVehicleId());
-        if (Boolean.FALSE.equals(employeeExists)) {
-            throw new IllegalArgumentException("Employee ID " + requestDto.getDeliveredBy() + " does not exist in master data.");
+        VehicleInventoryResponseDto vehicleInventoryResponseDto= vehicleInventoryClients.getQualityVehicleInventory(requestDto.getVehicleId()).getBody().getData();
+        if (vehicleInventoryResponseDto == null) {
+            throw new RuntimeException("VehicleInventory data is missing");
         }
-        if (Boolean.FALSE.equals(customerExists)) {
-            throw new IllegalArgumentException("Customer ID " + requestDto.getCustomerId() + " does not exist in master data.");
+        EmployeeResponseDto employeeResponseDto= employeeClients.getEmployeeById(requestDto.getDeliveredBy()).getBody().getData();
+        if (employeeResponseDto == null) {
+            throw new RuntimeException("Employee data is missing");
         }
-        if (Boolean.FALSE.equals(vehicleExists)) {
-            throw new IllegalArgumentException("vehicle ID " + requestDto.getVehicleId() + " does not exist in master data.");
+        ResponseEntity<ApiResponse<Boolean>> response = customerClients.getCustomerById(requestDto.getCustomerId());
+
+        if (response.getBody() != null && response.getBody().getData() != null) {
+            boolean customerExists = response.getBody().getData();
+
+            if (!customerExists) {
+                throw new RuntimeException("Customer does not exist or has been deleted.");
+            }
         }
         UserContext context = UserContextHolder.getContext();
         Long userId = (context != null && context.getUserId() != null) ? context.getUserId() : 0L;
