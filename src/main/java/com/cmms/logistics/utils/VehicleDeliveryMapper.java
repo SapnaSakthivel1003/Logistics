@@ -24,7 +24,6 @@ public class VehicleDeliveryMapper {
 
         return vehicleDelivery;
     }
-
     public VehicleDeliveryResponseDto mapToResponseDto(VehicleDelivery dto) {
 
         VehicleDeliveryResponseDto vehicleDelivery = new VehicleDeliveryResponseDto();
